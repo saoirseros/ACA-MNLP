@@ -44,6 +44,18 @@ const ChatContainer = ({selectedUser, setSelectedUser}) => {
         <div ref={scrollEnd}></div>
       </div>
 
+      {/* bottom area */}
+      <div className='absolute bottom-0 left-0 right-0 flex items-center gap-3 p-3'>
+        <div className='flex-1 flex items-center bg-gray-100/12 px-3 rounded-full'>
+          <input type="text" placeholder='Send a mesage' className='flex-1 text-sm p-3 border-none rounded-lg outline-none text-white placeholder-gray-400'/>
+          <input type="file" id='image' accept='image/png, image/jpeg' hidden />
+          <label htmlFor="image">
+            <img src={assets.gallery_icon} alt="" className='w-5 mr-2 cursor-pointer'/>
+          </label>
+        </div>
+        <img src={assets.send_button} alt="" className='w-7 cursor-pointer' />
+      </div>
+
     </div>
   ) : (
     <div className='flex flex-col items-center justify-center gap-2 text-gray-500 bg-white/10 max-md:hidden'>
