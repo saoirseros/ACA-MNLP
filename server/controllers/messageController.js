@@ -21,4 +21,26 @@ export const getUsersForSiderbar = async (req, res)=>{
         console.log(error.message);
         res.json({success: false, message: error.message})
     }
-} 
+}
+
+//get all msgs for selected usrrs
+export const getMessages = async (req, res) =>{
+    try {
+        const { id: selectedUserId } = req.params;
+        const myId = req.user._id;
+
+        const messages = await Message.find({
+            $or:[
+                {senderId: myId, receiverId: selectedUserId},
+                {senderId: selectedUserId, receiverIs: myId},
+            ]
+        })
+        await Message.updateMany({senderId: selectedUserId, receiverId: myId}, {seen: true});
+
+        res.json({success: true, messages})
+
+    } catch (error) {
+        console.log(error.message);
+        res.json({success: false, message: error.message})
+    }
+}
