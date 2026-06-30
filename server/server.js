@@ -5,10 +5,16 @@ import http from "http";
 import { connectDB } from "./lib/db.js";
 import userRouter from "./routes/userRoutes.js";
 import messageRouter from "./routes/messageRoutes.js";
+import { Server } from "socket.io";
 
 //creating express app using http server
 const app = express();
 const server = http.createServer(app)
+
+//initializing socket.io server
+export const io = new Server(server, {
+    cors: {origin: "*"}
+})
 
 //middleware setup
 app.use(express.json({limit:"4mb"}));
