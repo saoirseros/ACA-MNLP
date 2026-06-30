@@ -64,6 +64,19 @@ export const AuthProvider = ({ children })=>{
         socket.disconnect();
     }
 
+    //update profile function to handle user profile updates
+    const updateProfile = async (body)=>{
+        try {
+            const { data } = await axios.put("/api/auth/update-profile", body);
+            if(data.success){
+                setAuthUser(data.user);
+                toast.success("Profile updated succesfully")
+            }
+        } catch (error) {
+            toast.error(error.message);
+        }
+    }
+
 
 
     //connect socket fucntion to handle socket connection and online users updates
