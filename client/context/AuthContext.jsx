@@ -77,8 +77,6 @@ export const AuthProvider = ({ children })=>{
         }
     }
 
-
-
     //connect socket fucntion to handle socket connection and online users updates
     const connectSocket = (userData)=>{
         if(!userData || socket?.connected) return;
@@ -106,7 +104,10 @@ export const AuthProvider = ({ children })=>{
         axios,
         authUser,
         onlineUsers,
-        socket
+        socket,
+        login,
+        logout,
+        updateProfile
     }
     return (
         <AuthContext.Provider value={value}>
