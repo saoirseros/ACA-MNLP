@@ -3,6 +3,9 @@
 import { createContext } from "react";
 import axios from 'axios';
 import { useState } from "react";
+import toast from "react-hot-toast";
+import { useEffect } from "react";
+import {io} from "socket.io-client";
 
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -25,9 +28,32 @@ export const AuthProvider = ({ children })=>{
             setAuthUser(data.user)
            }
         } catch (error) {
-            
+            toast.error(error.message)
         }
     }
+
+    //connect socket fucntion to handle socket connection and online users updates
+    const connectSocket = (userData)=>{
+        if(!userData || socket?.connected) return;
+        const newSocket = io(backendUrl, {
+            query: {
+                userId: userData._id
+            }
+        });
+        newSocket.connect();
+        setsocket(newSocket);
+
+        newSocket.on("getOnlineUsers", ()=>{
+            setOnlineUsers(userIds);
+        })
+    }
+
+    useEffect(()=>{
+        if(token){
+            axios.defaults.headers.common["token"] = token;
+        }
+        checkAuth();
+    },[])
 
     const value = {
         axios,
