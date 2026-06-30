@@ -2,6 +2,7 @@
 
 import { createContext } from "react";
 import axios from 'axios';
+import { useState } from "react";
 
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -10,8 +11,17 @@ axios.defaults.baseURL = backendUrl;
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children })=>{
+
+    const [token, setToken] = useState(localStorage.getItem("token"));
+    const [authUser, setAuthUser] = useState(null);
+    const [onlineUsers, setOnlineUsers] = useState([]);
+    const [socket, setsocket] = useState(null);
+
     const value = {
-        axios
+        axios,
+        authUser,
+        onlineUsers,
+        socket
     }
     return (
         <AuthContext.Provider value={value}>
