@@ -33,11 +33,6 @@ Rather than functioning as a conventional chat application, the platform serves 
 
 # Getting Started
 
-> 📖 For a detailed, step-by-step walkthrough (prerequisites, first-run
-> checklist, running tests, troubleshooting), see **[RUNNING.md](RUNNING.md)**.
-> The quick version below assumes you already have Node, Python, and
-> MongoDB installed.
-
 The application has four local processes: MongoDB, the Node/Express server,
 the Python NLP service, and the Vite client. Start them in that order.
 
@@ -335,28 +330,6 @@ This project proposes a unified architecture capable of integrating multiple NLP
 - Federated Learning Support
 - LLM Fine-Tuning
 - Multi-Agent Conversational Intelligence
-
----
-
-# Current Status
-
-> ✅ Phase 11 complete; future enhancements remain planned
-
-This repository is being developed as part of a Final Year Engineering Project focused on Conversational AI, Natural Language Processing, and Machine Learning.
-
-**Implementation progress** (see [nlp-service/README.md](nlp-service/README.md) for full detail):
-
-- ✅ Phase 1-2: Existing MERN chat audited and stabilized
-- ✅ Phase 3: Python FastAPI NLP service scaffolded
-- ✅ Phase 4: First end-to-end pipeline (sentiment) proven Node → Python → model → Node → React
-- ✅ Phase 5: Emotion, toxicity, summarization, and topic extraction modules added
-- ✅ Phase 6: Adaptive Context Activation (ACA) algorithm implemented and verified against the spec's canonical examples
-- ✅ Phase 7: ACA wired into the live per-message pipeline - real chat messages now get context-aware analysis
-- ✅ Phase 8: Conversation-level intelligence dashboard (`GET /api/messages/analytics/:id`) - sentiment progression, dominant emotion, toxicity frequency, topic, live summary, context usage stats, and a data-driven sentiment-trend insight
-- ✅ Phase 9: Experiment/training/evaluation framework - see [experiments/FINDINGS.md](experiments/FINDINGS.md) for full results. Real, reproducible metrics generated from public datasets: TF-IDF+LogReg baseline vs pretrained Transformer for sentiment/emotion/toxicity, and a full-context vs Adaptive Context Activation comparison on real dialogue data. A fine-tuning pipeline scaffold ([training/](training)) is built and import-verified but not executed (CPU-only fine-tuning deferred, per spec)
-- ✅ Phase 10-11: Performance/usability optimization, automated smoke tests, and documentation polish
-
----
 
 ---
 
