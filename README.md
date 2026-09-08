@@ -45,6 +45,33 @@ standalone message can be analyzed without unnecessary context, while a
 follow-up such as "I meant the other results" can include the messages needed
 to interpret it.
 
+## Problem and Motivation
+
+Online conversations contain more information than the message text alone.
+Short replies, pronouns, corrections, and references such as "that one" or
+"the earlier result" depend on previous turns. A system that analyzes every
+message in isolation can miss this dependency, while a system that always
+sends a large fixed context window spends computation on irrelevant text.
+
+This project investigates a middle ground: keep the chat experience
+lightweight and real-time, but selectively provide context when the message
+appears to require it. The application is both a usable chat prototype and an
+experimental platform for measuring the trade-off between predictive quality,
+context size, and inference latency.
+
+## Project Goals
+
+- Build a complete real-time chat application instead of an isolated model
+  demo.
+- Keep analysis modular so individual NLP tasks can be improved independently.
+- Analyze messages asynchronously so NLP processing does not block delivery.
+- Make context selection observable and explainable through scores, levels, and
+  selected messages.
+- Compare classical machine-learning baselines with pretrained Transformer
+  models on public datasets.
+- Evaluate whether selective context can improve conversational predictions
+  while reducing the amount of history sent to downstream models.
+
 ## Features
 
 - Real-time one-to-one chat with Socket.io
@@ -56,6 +83,66 @@ to interpret it.
   usage statistics
 - Reproducible experiments comparing classical baselines, Transformer models,
   and context-selection strategies
+
+## NLP Modules
+
+The Python service exposes focused modules as well as a combined
+`/analyze/message` pipeline:
+
+| Module | Purpose | Current approach |
+| --- | --- | --- |
+| Sentiment | Identifies positive or negative message sentiment | DistilBERT fine-tuned on SST-2 |
+| Emotion | Detects emotions such as joy, sadness, anger, fear, disgust, surprise, and neutral | DistilRoBERTa emotion classifier |
+| Toxicity | Flags toxic or offensive language for moderation and conversation insights | Toxic-BERT multi-label classifier |
+| Summarization | Produces a concise view of a longer conversation | BART model fine-tuned for dialogue summarization |
+| Topic extraction | Finds representative terms and themes | TF-IDF keyword extraction |
+| Context selection | Chooses relevant prior turns for context-dependent messages | ACA scoring plus MiniLM embeddings |
+
+The live message endpoint combines ACA with sentiment, emotion, and toxicity
+analysis. Conversation-level endpoints use the stored message history to
+generate summaries and topics for analytics views.
+
+## Message Analysis Flow
+
+1. A user sends a message through the React client.
+2. The Node.js server persists the message in MongoDB and delivers it through
+   Socket.io.
+3. The server asynchronously sends the message and recent text history to the
+   FastAPI NLP service.
+4. ACA scores the message and selects zero or more relevant prior messages.
+5. The selected context and current message are passed to the analysis models.
+6. The resulting sentiment, emotion, toxicity, context metadata, and latency
+   are stored with the message analysis record.
+7. The analysis update is emitted back to both conversation participants, so
+   the interface can update without a page refresh.
+
+NLP analysis is intentionally non-blocking. If the NLP service is unavailable,
+normal chat delivery continues and only the analysis update is skipped. This
+keeps the core messaging experience independent from model availability.
+
+## How Adaptive Context Activation Works
+
+ACA currently considers up to the most recent eight history messages while
+calculating a context requirement score. Four normalized signals contribute to
+the score:
+
+| Signal | Weight | Interpretation |
+| --- | ---: | --- |
+| Reference | 0.35 | Detects pronouns and phrases that commonly refer to earlier turns |
+| Brevity | 0.15 | Treats very short messages as more likely to need context |
+| Similarity | 0.30 | Measures semantic relatedness to recent history with MiniLM embeddings |
+| Uncertainty | 0.20 | Uses standalone sentiment confidence as an ambiguity signal |
+
+The weighted score is grouped into three levels:
+
+- **Low:** no previous messages are selected
+- **Medium:** up to two relevant messages are selected
+- **High:** up to five relevant messages are selected
+
+Selection is based on a blend of semantic similarity and recency, then the
+chosen messages are restored to chronological order before being composed with
+the current message. The weights and thresholds are intentionally simple,
+interpretable starting points rather than claims of an optimally tuned model.
 
 ## Architecture
 
@@ -78,6 +165,19 @@ Python + FastAPI NLP service
 The NLP service is separated from the chat backend so that the analysis
 modules can be developed, evaluated, and replaced independently.
 
+## Design Principles
+
+- **Modularity:** chat, persistence, transport, and inference are separated
+  into services with clear responsibilities.
+- **Asynchronous processing:** analysis runs after message delivery and does
+  not hold up normal chat operations.
+- **Explainability:** ACA records its context level, score, selected messages,
+  and processing metadata instead of returning an opaque context decision.
+- **Reproducibility:** experiments use declared sample sizes, fixed seeds, and
+  generated result files rather than hard-coded metrics.
+- **Graceful degradation:** the application remains usable when optional NLP
+  analysis or external media services are not configured.
+
 ## Technology Stack
 
 - **Frontend:** React, Vite, Tailwind CSS, Socket.io Client
@@ -87,6 +187,39 @@ modules can be developed, evaluated, and replaced independently.
   sentence-transformers, scikit-learn
 - **Evaluation:** Public datasets, accuracy/precision/recall/F1, confusion
   matrices, and inference latency
+
+## Evaluation Snapshot
+
+The included experiment suite compares the live pretrained models with
+TF-IDF plus Logistic Regression baselines, and compares ACA with a full recent
+context strategy. The following results come from the checked-in experiment
+configuration and should be read as a development snapshot, not a universal
+benchmark:
+
+### Classification tasks
+
+| Task | Baseline accuracy | Transformer accuracy | Transformer macro F1 |
+| --- | ---: | ---: | ---: |
+| Sentiment | 70.3% | **91.3%** | **0.913** |
+| Emotion | 67.3% | **93.0%** | **0.631** |
+| Toxicity | 80.7% | **88.3%** | **0.829** |
+
+The Transformer models improved predictive quality on the evaluated samples,
+but they were substantially slower on the CPU-only, single-example setup. For
+example, measured mean latency was approximately 217 ms for sentiment,
+260 ms for emotion, and 493 ms for toxicity.
+
+### Context selection
+
+On 251 evaluable turns from 40 DailyDialog conversations, ACA improved
+accuracy from 54.6% to 62.5% and macro F1 from 0.151 to 0.191 compared with
+the full-context strategy. Average context decreased from 52.5 words to
+11.7 words, a 77.8% reduction.
+
+This reduction did not automatically produce lower wall-clock latency in the
+current CPU implementation: ACA averaged 665.3 ms compared with 453.3 ms for
+full context because embedding and scoring add decision overhead. This is an
+important measured trade-off and an area for future optimization.
 
 ## Repository Structure
 
@@ -174,6 +307,39 @@ The FastAPI service exposes endpoints for:
 See [nlp-service/README.md](nlp-service/README.md) for request formats,
 model details, and ACA implementation notes.
 
+## Running Tests and Experiments
+
+The project includes targeted tests for the NLP context logic and backend
+controllers:
+
+```powershell
+cd nlp-service
+pytest
+
+cd ..\server
+npm test
+```
+
+To run the client checks:
+
+```powershell
+cd client
+npm run lint
+npm run build
+```
+
+To reproduce the evaluation outputs, install the NLP service requirements and
+run the experiment orchestrator:
+
+```powershell
+cd experiments
+<path-to-nlp-service-venv>\Scripts\python.exe run_all.py
+```
+
+The generated JSON metrics, confusion matrices, and comparison charts are
+written to `experiments/results/`. The full methodology and dataset notes are
+documented in [experiments/README.md](experiments/README.md).
+
 ## Research and Evaluation
 
 The `experiments/` module evaluates:
@@ -186,6 +352,28 @@ The evaluation uses public datasets including SST-2, dair-ai/emotion,
 tweet_eval, and DailyDialog. To reproduce the experiments, follow
 [experiments/README.md](experiments/README.md). Results and their
 interpretation are available in [experiments/FINDINGS.md](experiments/FINDINGS.md).
+
+## Limitations and Future Work
+
+The current implementation is deliberately a practical first research
+prototype. Important limitations include:
+
+- ACA weights and thresholds are heuristic and have not been optimized against
+  a dedicated context-requirement dataset.
+- The reference signal uses lightweight pattern matching, so it cannot fully
+  resolve coreference or distinguish every self-contained pronoun.
+- Transformer inference is CPU-intensive and currently processes messages one
+  at a time.
+- The toxicity experiment uses the openly accessible TweetEval offensive
+  subset as a proxy for the live model's original training domain.
+- Public dialogue datasets contain label imbalance, so accuracy should be
+  considered alongside macro F1 and weighted F1.
+- Model downloads and inference require additional disk space and startup
+  time, especially on the first NLP service launch.
+
+Potential extensions include GPU-optimized inference, batched requests,
+learned context thresholds, richer coreference resolution, multilingual
+models, custom fine-tuning, and broader conversation-level analytics.
 
 ## Project Status
 
