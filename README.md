@@ -1,6 +1,6 @@
 <div align="center">
 
-# Multi-Module NLP System for Real-Time Conversational Analysis
+# Adaptive Context-Aware Multi-Module NLP System for Real-Time Conversational Intelligence
 
 ### An AI-powered conversational intelligence platform for real-time language understanding, sentiment analysis, toxicity detection, summarization, and communication insights.
 
